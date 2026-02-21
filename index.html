@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LifeQuest Ultra - Edição Final</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root { --bg: #0f172a; --card: #1e293b; --primary: #22c55e; --text: #f8fafc; --rare: #a855f7; --epic: #f59e0b; --store: #3b82f6; --danger: #ef4444; }
+        body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; display: flex; justify-content: center; }
+        .app { width: 100%; max-width: 450px; padding: 20px; }
+        
+        /* Banners de Perfil */
+        .header { background: #1e293b; padding: 20px; border-radius: 20px; text-align: center; margin-bottom: 20px; border: 1px solid #334155; position: relative; overflow: hidden; }
+        .banner-default { background: #1e293b; }
+        .banner-emerald { background: linear-gradient(135deg, #064e3b 0%, #1e293b 100%); border: 1px solid #10b981 !important; }
+        .banner-royal { background: linear-gradient(135deg, #4c1d95 0%, #1e293b 100%); border: 1px solid #8b5cf6 !important; }
+        .banner-gold { background: linear-gradient(135deg, #78350f 0%, #1e293b 100%); border: 1px solid #f59e0b !important; }
+        .banner-void { background: linear-gradient(135deg, #000000 0%, #1e293b 100%); border: 1px solid #3b82f6 !important; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0px #3b82f6; } 50% { box-shadow: 0 0 10px #3b82f6; } 100% { box-shadow: 0 0 0px #3b82f6; } }
+
+        .lvl-badge { font-size: 32px; font-weight: 900; color: var(--primary); }
+        .xp-bar { background: #334155; height: 14px; border-radius: 7px; margin: 10px 0; overflow: hidden; border: 1px solid #475569; }
+        #xp-fill { background: linear-gradient(90deg, var(--primary), #4ade80); height: 100%; width: 0%; transition: 0.5s; }
+        .streak-badge { position: absolute; top: 15px; right: 15px; background: rgba(245,158,11,0.1); color: var(--epic); padding: 5px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; border: 1px solid var(--epic); }
+
+        .tabs { display: flex; gap: 5px; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 12px; background: #1e293b; border: none; color: white; border-radius: 10px; cursor: pointer; font-weight: bold; opacity: 0.5; font-size: 11px; }
+        .tab-btn.active { opacity: 1; background: var(--primary); color: #064e3b; }
+
+        .page { display: none; }
+        .page.active { display: block; }
+
+        .habit-card { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 6px solid #475569; }
+        .habit-card.completed { opacity: 0.4; filter: grayscale(1); pointer-events: none; }
+        .delete-btn { background: none; color: var(--danger); border: 1px solid var(--danger); width: 28px; height: 28px; border-radius: 8px; cursor: pointer; }
+
+        .timer-box { background: rgba(59, 130, 246, 0.1); border: 1px dashed var(--store); padding: 10px; border-radius: 10px; text-align: center; margin-bottom: 15px; font-size: 12px; color: var(--store); }
+        
+        .store-item { background: var(--card); padding: 12px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #334155; }
+        .buy-btn { background: var(--store); color: white; border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .buy-btn:disabled { background: #475569; opacity: 0.5; }
+        
+        .ranking-item { padding: 15px; margin-bottom: 8px; border-radius: 12px; border: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+        .btn-add { width: 100%; background: var(--primary); border: none; padding: 12px; border-radius: 8px; font-weight: bold; color: #064e3b; cursor: pointer; }
+        input, select { width: 100%; padding: 12px; margin: 5px 0; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <div id="main-header" class="header banner-default">
+            <div class="streak-badge">🔥 <span id="streak-count">0</span> DIAS</div>
+            <span id="player-title-display" style="font-size: 9px; color: var(--epic); font-weight: bold; text-transform: uppercase;">RECRUTA</span>
+            <div id="player-name-display" style="font-weight: bold; font-size: 18px;">---</div>
+            <div class="lvl-badge">Lvl <span id="lvl">1</span></div>
+            <div class="xp-bar"><div id="xp-fill"></div></div>
+            <div style="display:flex; justify-content: space-between; font-size: 12px;">
+                <span>XP: <b id="current-xp">0</b> / <span id="next-lvl-xp">100</span></span>
+                <span>💎 <b id="store-points">0</b></span>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showPage('jogar', this)">MISSÕES</button>
+            <button class="tab-btn" onclick="showPage('loja', this)">LOJA</button>
+            <button class="tab-btn" onclick="showPage('ranking', this)">RANKING</button>
+        </div>
+
+        <div id="jogar" class="page active">
+            <div class="timer-box">⏳ Próximo reset em: <b id="reset-timer">00:00:00</b></div>
+            <div style="background:#1e293b; padding:15px; border-radius:15px; margin-bottom:20px; border: 1px solid #334155;">
+                <input type="text" id="habit-name" placeholder="Nome da missão...">
+                <select id="habit-dif">
+                    <option value="10">Fácil (+10 XP)</option>
+                    <option value="30">Médio (+30 XP) - Máx 3</option>
+                    <option value="60">Difícil (+60 XP) - Máx 1</option>
+                </select>
+                <button class="btn-add" onclick="addHabit()">CRIAR MISSÃO</button>
+                <div id="limit-text" style="font-size: 11px; margin-top: 8px; color: #94a3b8;"></div>
+            </div>
+            <div id="habit-list"></div>
+        </div>
+
+        <div id="loja" class="page">
+            <h4 style="color:var(--store)">TÍTULOS</h4>
+            <div id="title-store"></div>
+            <h4 style="color:var(--rare); margin-top:20px;">BANNERS</h4>
+            <div id="banner-store"></div>
+        </div>
+
+        <div id="ranking" class="page">
+            <h3 style="text-align: center;">TOP HERÓIS</h3>
+            <div id="leaderboard"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAgKQSjBl1PeanAI5G_-zbdCdT8UvMz138",
+            authDomain: "firequest-2bb44.firebaseapp.com",
+            projectId: "firequest-2bb44",
+            storageBucket: "firequest-2bb44.firebasestorage.app",
+            messagingSenderId: "831345633283",
+            appId: "1:831345633283:web:429438a8852ce452f80636"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let xpTotal = parseInt(localStorage.getItem('LQ_xpTotal')) || 0;
+        let storePoints = parseInt(localStorage.getItem('LQ_storePoints')) || 0;
+        let title = localStorage.getItem('LQ_title') || "Recruta";
+        let banner = localStorage.getItem('LQ_banner') || "banner-default";
+        let playerName = localStorage.getItem('LQ_name');
+        let habits = JSON.parse(localStorage.getItem('LQ_habits')) || [];
+        let streak = parseInt(localStorage.getItem('LQ_streak')) || 0;
+        let lastDate = localStorage.getItem('LQ_lastDate');
+
+        if(!playerName) {
+            playerName = prompt("Nome do Herói:");
+            if(!playerName) playerName = "Guerreiro_" + Math.floor(Math.random()*1000);
+            localStorage.setItem('LQ_name', playerName);
+        }
+
+        const titles = [{name:"Caçador", p:200}, {name:"Veterano", p:600}, {name:"Mestre", p:1500}, {name:"Lenda", p:4000}];
+        const bannersArr = [{name:"Esmeralda", id:"banner-emerald", p:400}, {name:"Roxo Real", id:"banner-royal", p:1000}, {name:"Ouro Puro", id:"banner-gold", p:2500}, {name:"O Vazio", id:"banner-void", p:6000}];
+
+        // Timer de Reset
+        function updateTimer() {
+            const now = new Date();
+            const tomorrow = new Date();
+            tomorrow.setHours(24, 0, 0, 0);
+            const diff = tomorrow - now;
+            const h = Math.floor(diff / 3600000).toString().padStart(2, '0');
+            const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+            const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+            document.getElementById('reset-timer').innerText = `${h}:${m}:${s}`;
+            if(diff <= 1000) location.reload(); 
+        }
+        setInterval(updateTimer, 1000);
+
+        function getLevelData(xp) {
+            let lvl = 1, req = 100, tmp = xp;
+            while (tmp >= req) { tmp -= req; lvl++; req = Math.round(req * 1.5); }
+            return { lvl, cur: tmp, next: req };
+        }
+
+        window.showPage = (id, btn) => {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            btn.classList.add('active');
+        };
+
+        window.addHabit = () => {
+            const name = document.getElementById('habit-name').value.trim();
+            const xpVal = parseInt(document.getElementById('habit-dif').value);
+            const meds = habits.filter(h => h.xpVal === 30).length;
+            const diffs = habits.filter(h => h.xpVal === 60).length;
+            if (habits.length >= 10 || (xpVal===30 && meds>=3) || (xpVal===60 && diffs>=1)) return alert("Limites diários atingidos!");
+            if(!name || habits.some(h => h.name.toLowerCase() === name.toLowerCase())) return;
+            habits.push({ name, xpVal, completed: false });
+            document.getElementById('habit-name').value = "";
+            save(); sync();
+        };
+
+        window.completeHabit = (i) => {
+            if(habits[i].completed) return;
+            habits[i].completed = true;
+            xpTotal += habits[i].xpVal;
+            storePoints += habits[i].xpVal;
+            const today = new Date().toDateString();
+            if (localStorage.getItem('LQ_lastStreakUpdate') !== today) { streak++; localStorage.setItem('LQ_lastStreakUpdate', today); }
+            confetti({ particleCount: 100, spread: 70 });
+            save(); sync();
+        };
+
+        window.deleteHabit = (i, e) => { e.stopPropagation(); if(confirm("Apagar quest?")) { habits.splice(i, 1); save(); } };
+
+        window.buyItem = (type, val, price) => {
+            if(storePoints >= price) {
+                storePoints -= price;
+                if(type === 'title') title = val;
+                if(type === 'banner') banner = val;
+                save(); sync();
+            }
+        };
+
+        function save() {
+            localStorage.setItem('LQ_xpTotal', xpTotal);
+            localStorage.setItem('LQ_storePoints', storePoints);
+            localStorage.setItem('LQ_title', title);
+            localStorage.setItem('LQ_banner', banner);
+            localStorage.setItem('LQ_habits', JSON.stringify(habits));
+            localStorage.setItem('LQ_streak', streak);
+            render();
+        }
+
+        async function sync() {
+            const ld = getLevelData(xpTotal);
+            await setDoc(doc(db, "ranking", playerName), { nome: playerName, xpTotal, titulo: title, banner, lvl: ld.lvl, streak });
+        }
+
+        function render() {
+            const ld = getLevelData(xpTotal);
+            document.getElementById('player-name-display').innerText = playerName;
+            document.getElementById('player-title-display').innerText = title;
+            document.getElementById('lvl').innerText = ld.lvl;
+            document.getElementById('xp-fill').style.width = (ld.cur / ld.next * 100) + "%";
+            document.getElementById('current-xp').innerText = ld.cur;
+            document.getElementById('next-lvl-xp').innerText = ld.next;
+            document.getElementById('store-points').innerText = storePoints;
+            document.getElementById('streak-count').innerText = streak;
+            document.getElementById('main-header').className = "header " + banner;
+
+            const m = 3 - habits.filter(h => h.xpVal === 30).length;
+            const d = 1 - habits.filter(h => h.xpVal === 60).length;
+            document.getElementById('limit-text').innerHTML = `Slots: ${10-habits.length}/10 | Médias: ${m} | Difíceis: ${d}`;
+
+            document.getElementById('habit-list').innerHTML = habits.map((h, i) => `
+                <div class="habit-card ${h.completed?'completed':''}" style="border-left-color:${h.xpVal==10?'var(--primary)':h.xpVal==30?'var(--rare)':'var(--epic)'}">
+                    <div style="flex:1; cursor:pointer" onclick="completeHabit(${i})"><b>${h.name}</b><br><small>+${h.xpVal} XP</small></div>
+                    <button class="delete-btn" onclick="deleteHabit(${i}, event)">×</button>
+                </div>`).join('');
+
+            document.getElementById('title-store').innerHTML = titles.map(t => `<div class="store-item"><span>${t.name} (${t.p})</span><button class="buy-btn" ${storePoints<t.p?'disabled':''} onclick="buyItem('title','${t.name}',${t.p})">${title==t.name?'Uso':'Comprar'}</button></div>`).join('');
+            document.getElementById('banner-store').innerHTML = bannersArr.map(b => `<div class="store-item ${b.id}" style="border:1px solid #444"><span style="color:white; font-weight:bold">${b.name} (${b.p})</span><button class="buy-btn" ${storePoints<b.p?'disabled':''} onclick="buyItem('banner','${b.id}',${b.p})">${banner==b.id?'Uso':'Comprar'}</button></div>`).join('');
+        }
+
+        onSnapshot(query(collection(db, "ranking"), orderBy("xpTotal", "desc"), limit(10)), (snap) => {
+            const lb = document.getElementById('leaderboard'); lb.innerHTML = "";
+            let p = 1;
+            snap.forEach(doc => {
+                const d = doc.data();
+                lb.innerHTML += `<div class="ranking-item ${d.banner || 'banner-default'}">
+                    <div><small style="color:var(--epic); font-size:9px;">${d.titulo}</small><br><b>${p}º ${d.nome}</b></div>
+                    <div style="text-align:right"><b>Lvl ${d.lvl}</b><br><small>🔥 ${d.streak}</small></div>
+                </div>`; p++;
+            });
+        });
+
+        if(lastDate !== new Date().toDateString()) { habits = []; localStorage.setItem('LQ_lastDate', new Date().toDateString()); save(); }
+        render(); sync();
+    </script>
+</body>
+</html>
